@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta http-equiv="content-language" content="en-us" />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <title>Lukas Rieder | Rechnung <%= @invoice.no %></title>
+
+  <link rel="stylesheet" href="https://unpkg.com/gutenberg-css@0.4">
+  <style>
+    /*
+    Deep Inked Berries  #0D1226
+    Purple Quill Pen    #585574
+    Quill Shadows       #A3A0A9
+    White Iron          #F3F1E5
+    Old Parchment Deed  #DDD4B3
+    */
+    html {
+      -webkit-print-color-adjust: exact !important;
+    }
+    body {
+      padding: 2cm 1cm;
+    }
+    header {
+      width: 100%;
+      margin-bottom: 8mm;
+    }
+    a[href^='http://']:after, a[href^='https://']:after, a[href^='ftp://']:after {
+      display: none;
+    }
+    header:after {
+      content: ".";
+      visibility: hidden;
+      display: block;
+      height; 0;
+      clear: both;
+    }
+    header .right {
+      width: 50%;
+      float: right;
+      text-align: right;
+    }
+    header .left {
+      width: 30%;
+      float: left;
+    }
+    .table {
+      display: table;
+      table-layout: fixed;
+      width: 100%;
+    }
+    .row {
+      display: table-row;
+    }
+    .row > div {
+      display: table-cell;
+      border-bottom: 1pt solid #A3A0A9 !important;
+      padding: 3mm;
+    }
+    .table .row.head > div {
+      background: #F3F1E5 !important; 
+      font-weight: bold;
+      text-align: left;
+    }
+    .table {
+      font-size: 0.7em;
+    }
+
+    .overview .row > div:nth-child(1) { width: 10%; }
+    .overview .row > div:nth-child(2) { width: 10%; }
+    .overview .row > div:nth-child(3) { width: 70%; }
+    .overview .row > div:nth-child(4) { width: 10%; text-align: right; }
+    .overview.table { margin-bottom: 8mm; }
+
+    .line-items .row > div:nth-child(1) { width: 10%; }
+    .line-items .row > div:nth-child(2) { width: 10%; }
+    .line-items .row > div:nth-child(3) { width: 60%; }
+    .line-items .row > div:nth-child(4) { width: 10%; text-align: right; }
+    .line-items .row > div:nth-child(5) { width: 10%; text-align: right; }
+
+    .totals .row.line-total { background: #F3F1E5 !important; }
+    .totals .row.tax-total  { background: #F3F1E5 !important; }
+    .totals .row.total      { background: #DDD4B3 !important; }
+    .totals .row > div { font-weight: bold; }
+    .totals .row > div:nth-child(1) { width: 90%; text-align: right; }
+    .totals .row > div:nth-child(2) { width: 10%; text-align: right; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="right">
+      <h5>Rechnung <%= @invoice.no %></h5>
+      <p>
+        <strong>Rechnungsdatum</strong><br>
+        <%= @h.format_date @invoice.date %><br>
+        <strong>Zahlung fällig</strong><br>
+        <%= @h.format_date @invoice.due_date %> (<%= @invoice.due_days %> Tage)<br>
+      </p>
+    </div>
+
+    <div class="left">
+      <h5>Von</h5>
+      <p>
+        <strong>Lukas Rieder</strong><br>
+        Weserstr. 55<br>
+        12045 Berlin<br>
+        <strong>Ust. ID</strong> DE268741341<br>
+        <a href="mailto:l.rieder@gmail.com">l.rieder@gmail.com</a><br>
+        <a href="tel:004917664348801">+49176 64348801</a>
+      </p>
+    </div>
+  </header>
+
+  <header>
+    <div class="left">
+      <h5>An</h5>
+      <p>
+        <strong><%= @recipient.name %></strong><br>
+        <%= @recipient.address1 %><br>
+        <%= @recipient.address2 %><br>
+        <%= for line <- Map.get(@recipient, :lines, []) do %>
+          <%= line %><br>
+        <% end %>
+      </p>
+    </div>
+
+    <div class="right">
+      <h5>Bankverbindung</h5>
+      <p>
+        <strong>Lukas Rieder</strong><br>
+        IBAN: DE28830654080104639650<br>
+        BIC: GENODEF1SLR<br>
+        Verwendungszweck: <%= @invoice.no %>
+      </p>
+    </div>
+  </header>
+
+  <p>Ich bedanke mich für die vertrauenvolle Zusammenarbeit.</p>
+
+  <h5>Leistungszeitraum <%= @h.format_daterange @invoice.from, @invoice.to %></h5>
+  <div class="table overview">
+    <div class="row head">
+      <div>Aufwand</div>
+      <div>Leistung</div>
+      <div>Projekt</div>
+      <div>Summe</div>
+    </div>
+    <%= for group <- @time_entry_groups do %>
+      <div class="row line-item">
+        <div><%= @h.format_duration group.minutes %>h</div>
+        <div><strong><%= group.service_name %></strong></div>
+        <div><%= group.project_name %></div>
+        <div><%= @h.cents_to_currency group.revenue %></div>
+      </div>
+    <% end %>
+  </div>
+
+  <h5>Abrechnung der Zeiteinträge</h5>
+  <div class="table line-items">
+    <div class="row head">
+      <div>Aufwand</div>
+      <div>Leistung</div>
+      <div>Beschreibung</div>
+      <div>Preis</div>
+      <div>Summe</div>
+    </div>
+    <%= for time_entry <- @time_entries do %>
+      <div class="row line-item">
+        <div><%= @h.format_duration time_entry.minutes %>h</div>
+        <div><strong><%= time_entry.service_name %></strong></div>
+        <div><%= @h.format_links time_entry.note %></div>
+        <div><%= @h.cents_to_currency time_entry.hourly_rate %></div>
+        <div><%= @h.cents_to_currency time_entry.revenue %></div>
+      </div>
+    <% end %>
+  </div>
+  <div class="table totals">
+    <% if @recipient.vat_exempt do %>
+    <div class="row line-total">
+      <div>Zwischensumme</div>
+      <div>€ <%= @h.cents_to_currency @invoice.line_total %></div>
+    </div>
+    <div class="row tax-total">
+      <div>MwSt. (19%)</div>
+      <div>€ <%= @h.cents_to_currency @invoice.tax_total %></div>
+    </div>
+    <% end%>
+    <div class="row total">
+      <div>Total</div>
+      <div>€ <%= @h.cents_to_currency @invoice.total %></div>
+    </div>
+  </div>
+
+</body>
+</html>
+
