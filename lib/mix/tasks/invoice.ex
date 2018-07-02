@@ -13,29 +13,44 @@ defmodule Mix.Tasks.Invoice do
         ]
       )
     opts
+    |> build_invoice
+    |> write_invoice
+  end
+
+  def build_invoice(input) do
+    input
     |> Enum.into(%{})
     |> set_datetime
     |> build_customer
     |> build_recipient
     |> build_time_entries
     |> build_time_entry_groups
-    |> build_invoice
+    |> build_invoice_state
     |> build_invoice_total
-    |> write_invoice
   end
 
   def set_datetime(%{date: input} = state) when is_binary(input), do: Map.put(state, :date, Timex.parse!(input, "%Y-%m-%d", :strftime))
   def set_datetime(state), do: Map.put(state, :date, Timex.now())
+
+  def build_number(%{number: number} = state) when is_binary(number) do
+    state
+  end
+
+  def build_customer(%{customer: customer} = state) when is_map(customer) do
+    state
+  end
 
   def build_customer(%{for: input} = state) do
     [customer] = Mite.Api.customers(name: input)
     Map.put(state, :customer, customer)
   end
 
-  def build_recipient(%{customer: %{id: id}} = state) do
-    recipient = File.read!("priv/recipients/customer_#{id}.json")
-                |> Poison.Parser.parse!(keys: :atoms)
-    recipient = Map.put(recipient, :vat_exempt, Map.get(recipient, :vat_exempt, false))
+  def build_recipient(%{recipient: recipient} = state) when is_map(recipient) do
+    state
+  end
+
+  def build_recipient(%{customer: %{note: note}} = state) do
+    recipient = Poison.decode!(note, keys: :atoms)
     Map.put(state, :recipient, recipient)
   end
 
@@ -49,23 +64,23 @@ defmodule Mix.Tasks.Invoice do
     Map.put(state, :time_entry_groups, time_entry_groups)
   end
 
-  def build_invoice(state) do
+  def build_invoice_state(state) do
     Map.put(state, :invoice, %{
       no: state.number,
       date: state.date,
       from: Timex.parse!(state.from, "%Y-%m-%d", :strftime),
       to: Timex.parse!(state.to, "%Y-%m-%d", :strftime),
-      due_days: state.due_days,
-      due_date: Timex.shift(state.date, days: state.due_days)
+      due_days: state.recipient.due_days,
+      due_date: Timex.shift(state.date, days: state.recipient.due_days)
     })
   end
 
   def build_invoice_total(%{recipient: recipient, invoice: invoice} = state) do
     line_total = sum_revenue(state.time_entries)
-    tax_total = unless recipient.vat_exempt do
-      taxes(line_total)
-    else
+    tax_total = if recipient.vat_exempt do
       Decimal.new(0)
+    else
+      taxes(line_total)
     end
     total = Decimal.add(line_total, tax_total)
     invoice = Map.merge(invoice, %{line_total: line_total, tax_total: tax_total, total: total})

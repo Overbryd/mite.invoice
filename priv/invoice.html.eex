@@ -137,7 +137,7 @@
     </div>
   </header>
 
-  <p>Ich bedanke mich für die vertrauenvolle Zusammenarbeit.</p>
+  <p>Ich bedanke mich für die vertrauensvolle Zusammenarbeit.</p>
 
   <h5>Leistungszeitraum <%= @h.format_daterange @invoice.from, @invoice.to %></h5>
   <div class="table overview">
@@ -177,7 +177,8 @@
     <% end %>
   </div>
   <div class="table totals">
-    <% if @recipient.vat_exempt do %>
+
+    <%= unless @recipient.vat_exempt do %>
     <div class="row line-total">
       <div>Zwischensumme</div>
       <div>€ <%= @h.cents_to_currency @invoice.line_total %></div>
@@ -186,7 +187,8 @@
       <div>MwSt. (19%)</div>
       <div>€ <%= @h.cents_to_currency @invoice.tax_total %></div>
     </div>
-    <% end%>
+    <% end %>
+
     <div class="row total">
       <div>Total</div>
       <div>€ <%= @h.cents_to_currency @invoice.total %></div>

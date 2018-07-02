@@ -16,7 +16,7 @@ defmodule Mite.Api do
     ]
   end
 
-  def process_response_body(body), do: Poison.Parser.parse!(body)
+  # def process_response_body(body), do: Poison.Parser.parse!(body)
 
   def time_entries(params \\ []) do
     get!("/time_entries.json", [], params: params)
@@ -28,14 +28,29 @@ defmodule Mite.Api do
     |> pull_objects("time_entry_group", ~w[from to minutes revenue user_id user_name service_name service_id customer_id customer_name project_id project_name day week month year])
   end
 
+  def set_customer_note(id, note) do
+    body = Poison.encode!(%{customer: %{note: note}})
+    patch!("/customers/#{id}.json", body, [{"Content-Type", "application/json"}])
+  end
+
+  def archived_customers(params \\ []) do
+    get!("/customers/archived.json", [], params: params)
+    |> pull_objects("customer", ~w[active_hourly_rate archived created_at hourly_rate hourly_rates_per_service id name note updated_at])
+  end
 
   def customers(params \\ []) do
     get!("/customers.json", [], params: params)
     |> pull_objects("customer", ~w[active_hourly_rate archived created_at hourly_rate hourly_rates_per_service id name note updated_at])
   end
 
+  def create_customer(params \\ []) do
+    body = Poison.encode!(%{customer: Enum.into(params, %{})})
+    post!("/customers.json", body, [{"Content-Type", "application/json"}])
+  end
+
   defp pull_objects(%HTTPoison.Response{body: response}, key, fields) do
-    Enum.map(response, fn %{^key => object} ->
+    data = Poison.decode!(response)
+    Enum.map(data, fn %{^key => object} ->
       Map.take(object, fields)
       |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
       |> Enum.into(%{})
